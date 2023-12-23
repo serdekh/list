@@ -159,7 +159,7 @@ List *list_read_lines_as_string(size_t buffer_size, size_t count);
 
 /* -- -- */
 
-//#ifdef LIST_IMPLEMENTATION
+#ifdef LIST_IMPLEMENTATION
 
 /* -- NODE ALLOCATION FUNCTIONS -- */
 
@@ -352,11 +352,18 @@ List *list_read_line_as_string(size_t buffer_size)
 
     char *input_string = LIST_MALLOC_ITEMS(char, buffer_size);
 
-    if (!input_string) LIST_SET_ERRNO_END_RETURN(ENOMEM, NULL);
+    if (!input_string) {
+        errno = ENOMEM;
+        list_deallocate_node(&result, WEAK);
+        return NULL;
+    }
 
-    if (!fgets(input_string, buffer_size, stdin)) LIST_SET_ERRNO_END_RETURN(EIO, NULL);
-
-    input_string[buffer_size - 1] = '\0';
+    if (!fgets(input_string, buffer_size, stdin)) {
+        errno = EIO;
+        list_deallocate_node(&result, WEAK);
+        free(input_string);
+        return NULL;
+    }
 
     result->data = input_string;
 
@@ -391,4 +398,4 @@ List *list_read_lines_as_string(size_t buffer_size, size_t count)
 
 /* -- -- */
 
-//#endif // LIST_IMPLEMENTATION
+#endif // LIST_IMPLEMENTATION

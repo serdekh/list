@@ -16,13 +16,13 @@ int main()
         return 1;
     }
 
-    size_t index = 1;
+    size_t index = 2;
 
     for (List *i = numbers->next; i; i = i->next) {
         int temp = atoi((const char *)i->data);
 
         if (ATOI_FAILED(temp, i)) {
-            fprintf(stderr, "ERROR: invalid input for the %zuth number: `%s`\n", index, (char *)numbers->data);
+            fprintf(stderr, "ERROR: invalid input for the %zuth number: %s\n", index, (char *)i->data);
             list_deallocate(&numbers, STRONG);
             return 1;
         }
