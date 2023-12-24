@@ -69,6 +69,19 @@ bool list_push_back(List **root, void *data);
 /// the `false` value will be returned.
 bool list_push_front(List **root, void *data);
 
+/// @brief allocates 1 node with the `data` and pushes it to the list pointed by the `root` in a specific `index`.
+/// @param root a pointer to the beginning of the list.
+/// @param data the data that a new node will be initialized with.
+/// @param index a place where the node will be set in a list `(starts from 0)`.
+/// @return `true` if a node was pushed successfully. If `root` is `NULL` or points to `NULL`, the function
+/// returns `false`. Except if `index` is equal to 0. In this case, if the `root` points to `NULL`, the 
+/// function will push the node (basically working as a `list_push_front`) and return `true`. 
+/// Also `false` is returned if the `index` exceeds the size of the list. The `errno` value will be set
+/// to: `EINVAL` if the `root` pointer is `NULL`, `ENOMEM` if allocations failed. Note: if a new node was
+/// allocated but the place for it wasn't found, then it will be freed using the WEAK mode. If `data` is
+/// a dynamically allocated, it'll have to be freed manually.
+bool list_push_by_index(List **root, void *data, size_t index);
+
 /// @brief deallocates the last node in the list pointed by `root` using the specific deallocation `mode`.
 /// @param root a pointer to the beginning of the list.
 /// @param mode an instruction on how to free the memory inside a node and the node itself.
@@ -81,10 +94,21 @@ bool list_pop_back(List **root, DeallocationMode mode);
 /// and reassigns the `root` to point to the second element after it.
 /// @param root a pointer to the beginning of the list.
 /// @param mode an instruction on how to free the memory inside a node and the node itself.
-/// (check the `DeallocationMode` enum typedefenition for more information).
+/// (check the `DeallocationMode` enum typedefinition for more information).
 /// @return `true` if the first node was freed successfully. Or `false` if the `root` pointer is `NULL` or if
 /// the `*root` points to an empty list (`NULL`). In this case the `errno` will be set to `EINVAL`.
 bool list_pop_front(List **root, DeallocationMode mode);
+
+
+/// @brief deallocates a node from a list pointed by `root` in a specific `index` using a deallocation `mode`.
+/// @param root a pointer to the beginning of the list.
+/// @param mode an instruction for a function on how to release memory.
+/// (check the `DeallocationMode` enum typedefinition for more information).
+/// @param index an index of the node that should be freed.
+/// @return `true` if the node was successfully freed. `false` is returned in case of any errors such as:
+/// if the `root` pointer is `NULL` or points to `NULL` (`errno` will be set to `EINVAL`); 
+/// if the `index` is greater than the size of the list (`errno` won't be changed);
+bool list_pop_by_index(List **root, DeallocationMode mode, size_t index);
 
 /* -- -- */
 
@@ -229,6 +253,30 @@ bool list_push_front(List **root, void *data)
     return true;
 }
 
+bool list_push_by_index(List **root, void *data, size_t index)
+{
+    if (!root) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    if (!(*root)) {
+        if (index != 0) return false;
+        return list_push_front(root, data);
+    }
+
+    if (index == 0) return list_push_front(root, data);
+
+    List *new_node = list_allocate_node(data);
+
+    if (!new_node) LIST_SET_ERRNO_END_RETURN(ENOMEM, false);
+
+    List *previous_node = list_get_by_index(root, index - 1);
+    List *next_node = previous_node->next;
+
+    previous_node->next = new_node;
+    new_node->next = next_node;
+
+    return true;
+}
+
 bool list_pop_back(List **root, DeallocationMode mode)
 {
     if (!root || !(*root)) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
@@ -261,6 +309,26 @@ bool list_pop_front(List **root, DeallocationMode mode)
     list_deallocate_node(root, mode);
 
     *root = second_node;
+
+    return true;
+}
+
+bool list_pop_by_index(List **root, DeallocationMode mode, size_t index)
+{
+    if (!root || !(*root)) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    if (index == 0) return list_pop_front(root, mode);
+
+    List *previous_node = list_get_by_index(root, index - 1);
+
+    if (!previous_node || !previous_node->next) return false;
+
+    List *target_node = previous_node->next;
+    List *after_target_node = target_node->next;
+
+    list_deallocate_node(&target_node, mode);
+
+    previous_node->next = after_target_node;
 
     return true;
 }
