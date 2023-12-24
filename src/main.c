@@ -1,39 +1,25 @@
 #define LIST_IMPLEMENTATION
 #include "./list.h"
 
-#define N 3
-#define ATOI_FAILED(n, node) (n == 0 && strcmp((const char *)node->data, "0") != 0)
+#define N 5
+#define MAX_INPUT_STRING_SIZE 12
 
 int main()
 {
-    List *numbers = list_read_lines_as_string(10, N);
-  
-    int max = atoi((const char *)(numbers->data));
+    List *numbers = list_read_lines_as_string(MAX_INPUT_STRING_SIZE, N);
 
-    if (ATOI_FAILED(max, numbers)) {
-        fprintf(stderr, "ERROR: invalid input for the 1th number: `%s`\n", (char *)numbers->data);
-        list_deallocate(&numbers, STRONG);
-        return 1;
-    }
+    if (!list_convert_strings_to_int_ptrs(&numbers)) goto error;
 
-    size_t index = 2;
+    int max = 0;
 
-    for (List *i = numbers->next; i; i = i->next) {
-        int temp = atoi((const char *)i->data);
-
-        if (ATOI_FAILED(temp, i)) {
-            fprintf(stderr, "ERROR: invalid input for the %zuth number: %s\n", index, (char *)i->data);
-            list_deallocate(&numbers, STRONG);
-            return 1;
-        }
-
-        if (temp > max) max = temp;
-    
-        index++;
-    }
+    if (!list_get_max_int(&numbers, &max)) goto error;
 
     printf("Max number: %d\n", max);
     list_deallocate(&numbers, STRONG);
-
     return 0;
+
+error:
+    list_print_error();
+    list_deallocate(&numbers, STRONG);
+    return 1;
 }
