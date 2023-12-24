@@ -121,6 +121,17 @@ bool list_pop_by_index(List **root, DeallocationMode mode, size_t index);
 /// @return `true` if successfully freed the list. If the `root` pointer is invalid, `false` will be returned.
 bool list_deallocate(List **root, DeallocationMode mode);
 
+/// @brief converts all the dynamically allocated strings in a list into int-pointers.
+/// Note: for every node there will be 1 integer allocated on the heap and the memory for
+/// the strings will be released. When the list is no longer needed, it should be freed
+/// using the `STRONG` mode (check the `DeallocationMode` enum typedefinition for more information).
+/// @param root a pointer to the beginning of the list.
+/// @return `true` if everything was converted successfully and `false` in case of any errors such as:
+/// if the `root` pointer is `NULL` or points to `NULL` (the `errno` value will he set to `EINVAL`);
+/// if allocating an integer to replace a string failed (the `errno` value will be set to `ENOMEM`);
+/// if a string from a node is not a valid integer (`errno` value would be replaced with `EINVAL`).
+bool list_convert_strings_to_int_ptrs(List **root);
+
 /* -- -- */
 
 /* -- SEARCHING FUNCTIONS --*/
@@ -155,6 +166,14 @@ List *list_get_by_string_value(List **root, char *string);
 /// `NULL` is returned and the `errno` is set to be `EINVAL`.
 List *list_get_last(List **root);
 
+/// @brief searches for the max integer in a list and sets its value to the `max` pointer.
+/// @param root a pointer to the begisnning of the list.
+/// @param max a pointer that will store the found max integer.
+/// @return `true` if the integer was found and `false` in case of any errors such as:
+/// if the `root` pointer is `NULL` or points to `NULL` (the `errno` value will be set to `EINVAL`);
+/// if the `max` pointer is `NULL`(the `errno` value will be set to `EINVAL`);
+bool list_get_max_int(List **root, int *max);
+
 /* -- -- */
 
 /* -- IO FUNCTIONS -- */
@@ -183,7 +202,14 @@ List *list_read_lines_as_string(size_t buffer_size, size_t count);
 
 /* -- -- */
 
-#ifdef LIST_IMPLEMENTATION
+/* -- ERROR HANDLING -- */
+
+/// @brief prints the errno message converted to a string into the stderr
+void list_print_error();
+
+/* -- -- */
+
+//#ifdef LIST_IMPLEMENTATION
 
 /* -- NODE ALLOCATION FUNCTIONS -- */
 
@@ -346,6 +372,34 @@ bool list_deallocate(List **root, DeallocationMode mode)
     return true;
 }
 
+bool list_convert_strings_to_int_ptrs(List **root)
+{
+    if (!root || !(*root)) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    bool result = true;
+
+    for (List *i = *root; i; i = i->next) {
+        int *integer = LIST_MALLOC_ITEM(int);
+
+        if (!integer) LIST_SET_ERRNO_END_RETURN(ENOMEM, false);
+
+        const char *integer_string = (const char *)i->data;
+
+        *integer = atoi(integer_string);
+
+        if (*integer == 0 && strncmp(integer_string, "0", 1) != 0) {
+            errno = EINVAL;
+            result = false;
+        }
+
+        free(i->data);
+
+        i->data = integer;
+    }
+
+    return result;
+}
+
 /* -- -- */
 
 /* -- SEARCHING FUNCTIONS --*/
@@ -404,6 +458,21 @@ List *list_get_last(List **root)
     }
 
     return last;
+}
+
+bool list_get_max_int(List **root, int *max)
+{
+    if (!root || !(*root) || !max) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    *max = *(int *)(*root)->data;
+
+    for (List *i = (*root)->next; i; i = i->next) {
+        int temp = *(int *)i->data;
+
+        if (temp > *max) *max = temp;
+    }
+
+    return true;
 }
 
 /* -- -- */
@@ -466,4 +535,13 @@ List *list_read_lines_as_string(size_t buffer_size, size_t count)
 
 /* -- -- */
 
-#endif // LIST_IMPLEMENTATION
+/* -- ERROR HANDLING -- */
+
+void list_print_error()
+{
+    fprintf(stderr, "[LIST][ERROR]: %s\n", strerror(errno));
+}
+
+/* -- -- */
+
+//#endif // LIST_IMPLEMENTATION
