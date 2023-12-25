@@ -14,6 +14,30 @@ typedef struct _list {
     struct _list *next;
 } List;
 
+/// @brief represents all the possible `data types` that the `list functions` can handle.
+/// This is required for the `printing functions` that should know somehow what the type
+/// of the `data` field is to print it correctly. Also some `searching functions` take
+/// this enum as a parameter to know what to look for. `Note: not all the types are implemented
+/// by default`. Only the `integer`, `char`, `float` and `string` because they're the most common ones.
+/// The implementation is still in process.
+typedef enum _list_data_type {
+    INT,
+    CHAR,
+    FLOAT,
+    STRING,
+    DOUBLE,
+    LONG_INT,
+    SHORT_INT,
+    LONG_DOUBLE,
+    SIGNED_CHAR,
+    UNSIGNED_INT,
+    UNSIGNED_CHAR,
+    LONG_LONG_INT,
+    UNSIGNED_LONG_INT,
+    UNSIGNED_LONG_LONG_INT,
+} ListDataType;
+
+
 /// @brief describes in which way a node should be deallocated. 
 /// `WEAK` means that the node will be freed but the `data` field won't. 
 /// For example, when a node stores a pointer to an element that was allocated on a stack: `int`, `float`, `char`, `double`, `...`. 
@@ -99,7 +123,6 @@ bool list_pop_back(List **root, DeallocationMode mode);
 /// the `*root` points to an empty list (`NULL`). In this case the `errno` will be set to `EINVAL`.
 bool list_pop_front(List **root, DeallocationMode mode);
 
-
 /// @brief deallocates a node from a list pointed by `root` in a specific `index` using a deallocation `mode`.
 /// @param root a pointer to the beginning of the list.
 /// @param mode an instruction for a function on how to release memory.
@@ -144,6 +167,7 @@ bool list_convert_strings_to_int_ptrs(List **root);
 /// size of the list, then the `NULL` pointer is also returned. 
 List *list_get_by_index(List **root, size_t index);
 
+
 /// @brief returns a pointer to a node that stores the same integer as in `value`.
 /// `WARNING: if the list contains not only integers, it may cause a segfault!`
 /// @param root a pointer to the beginning of the list.
@@ -156,9 +180,22 @@ List *list_get_by_integer_value(List **root, int value);
 /// `WARNING: if the list contains not only strings, it may cause a segfault!`
 /// @param root a pointer to the beginning of the list.
 /// @param value a string pointer that is going to be compared using the strcmp function.
-/// @return a pointer to a node that in which the `data` field stores a pointer to a strjng with a 
+/// @return a pointer to a node that in which the `data` field stores a pointer to a string with a 
 /// specific `value`. If either the `root` is `NULL` or the list is empty or the `value` wasn't found, `NULL` is returned.
 List *list_get_by_string_value(List **root, char *string);
+
+/// @brief searches for the `value` within the list interpreting each node `data` field as the `data_type`.
+/// Note: this function is an abstraction on top of other functions like `list_get_by_<type>_value`. It is
+/// recommended to use those functions rather than this one because it does extra work to identify the type
+/// to look for. This function also can be used in general cases if the node types are not known and the
+/// explicit search functions can't be used.
+/// @param root the beginning of the list.
+/// @param value a value to look for in the list.
+/// @param data_type a data type specifier that explicitly tells the function what type to look for.
+/// (check the `ListDataType` enum definition for more information).
+/// @return a pointer to a node that in which the `data` field stores a pointer to a strjng with a 
+/// specific `value`. If either the `root` is `NULL` or the list is empty or the `value` wasn't found, `NULL` is returned.
+List *list_get_by_value(List **root, void *value, ListDataType data_type);
 
 /// @brief returns a pointer to the last element of the list.
 /// @param root a pointer to the beginning of the memory.
@@ -166,6 +203,7 @@ List *list_get_by_string_value(List **root, char *string);
 /// `NULL` is returned and the `errno` is set to be `EINVAL`.
 List *list_get_last(List **root);
 
+// TODO: implement a function list_get_max(List **root, ListDataType data_type) to abstract the behaviour.
 /// @brief searches for the max integer in a list and sets its value to the `max` pointer.
 /// @param root a pointer to the begisnning of the list.
 /// @param max a pointer that will store the found max integer.
@@ -208,6 +246,23 @@ List *list_read_line_as_string(size_t buffer_size);
 /// out in which case the `errno` will be changed, check the `list_read_line_as_string` function.
 List *list_read_lines_as_string(size_t buffer_size, size_t count);
 
+/// @brief prints the `node` in the following format: `{ value: <data>, next: <ptr> } <newline>`.
+/// @param node a pointer to a node to print.
+/// @param data_type a data type specifier that explicitly tells the function how to print.
+/// the data field (check the `ListDataType` enum definition for more information).
+/// @return `true` if printed successfully or `false` in case of any errors such as:
+/// if the `node` pointer is `NULL` (the `errno` value is set to be `EINVAL`);
+/// if the `data_type` is not implemented for a specific type (the `errno` value is set to be `ECANCELED`);
+bool list_print_node(List **node, ListDataType data_type);
+
+/// @brief prints the whole list. 
+/// @param node a pointer to the beginning of the list.
+/// @param data_type a data type specifier that explicitly tells the function how to print.
+/// the data field (check the `ListDataType` enum definition for more information).
+/// @return `true` if everything was printed successfully or `false` in case of any errors.
+/// the errors are the same as in the `list_print_node` function. Check its definition for more information.
+bool list_print(List **root, ListDataType data_type);
+
 /* -- -- */
 
 /* -- ERROR HANDLING -- */
@@ -217,7 +272,19 @@ void list_print_error();
 
 /* -- -- */
 
-#ifdef LIST_IMPLEMENTATION
+/* -- FOREACH FUNCTIONS -- */
+
+/// @brief applies the `function` for each node in the list.
+/// @param root a pointer to the beginning of the list
+/// @param function a pointer to a function that accepts a node.
+/// @return `true` if executed successfully, `false` in case of any errors such as:
+/// if the `root` pointer is `NULL` (the `errno value is set to be `EINVAL`);
+/// if the `function` pointer is `NULL` (the `errno value is set to be `EINVAL`);
+bool list_foreach_node(List **root, void (*function)(List *));
+
+/* -- -- */
+
+//#ifdef LIST_IMPLEMENTATION
 
 /* -- NODE ALLOCATION FUNCTIONS -- */
 
@@ -451,6 +518,22 @@ List *list_get_by_string_value(List **root, char *string)
     return NULL;
 }
 
+List *list_get_by_value(List **root, void *value, ListDataType data_type)
+{
+    switch (data_type)
+    {
+        case INT:    return list_get_by_integer_value(root, *(int *)value); 
+        case STRING: return list_get_by_string_value(root, (char *)value); 
+
+        default:   
+            errno = ECANCELED;
+            list_print_error();
+            break;
+    }
+
+    return NULL;
+}
+
 List *list_get_last(List **root)
 {
     if (!root || !(*root)) LIST_SET_ERRNO_END_RETURN(EINVAL, NULL);
@@ -550,6 +633,50 @@ List *list_read_lines_as_string(size_t buffer_size, size_t count)
     return result;
 }
 
+bool list_print_node(List **node, ListDataType data_type)
+{
+    if (!node) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    switch (data_type) {
+        case INT: 
+            printf("{ value: %d, next: %p }\n", *(int *)(*node)->data, (*node)->next);
+            break;
+        case FLOAT: 
+            printf("{ value: %f, next: %p }\n", *(float *)(*node)->data, (*node)->next);
+            break;
+        case CHAR: 
+            printf("{ value: %c, next: %p }\n", *(char *)(*node)->data, (*node)->next);
+            break;
+        case STRING: 
+            // TODO: implement substitution for the `\n` characters so it doesn't make the printing goofy
+            printf("{ value: `%s`, next: %p }\n", (char *)(*node)->data, (*node)->next);
+            break;
+        default:
+            errno = ECANCELED;
+            list_print_error();
+            return false;
+            break;
+    }
+
+    return true;
+}
+
+bool list_print(List **root, ListDataType data_type)
+{
+    if (!root) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    printf("{\n");
+    for (List *i = *root; i; i = i->next) {
+        printf("\t");
+        if (!list_print_node(&i, data_type)) {
+            return false;
+        }
+    }
+    printf("}\n");
+
+    return true;
+}
+
 /* -- -- */
 
 /* -- ERROR HANDLING -- */
@@ -561,4 +688,20 @@ void list_print_error()
 
 /* -- -- */
 
-#endif // LIST_IMPLEMENTATION
+/* -- FOREACH FUNCTIONS -- */
+
+
+bool list_foreach_node(List **root, void (*function)(List *))
+{
+    if (!root || !function) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    for (List *i = *root; i; i = i->next) {
+        function(i);
+    }
+
+    return true;
+}
+
+/* -- -- */
+
+//#endif // LIST_IMPLEMENTATION
