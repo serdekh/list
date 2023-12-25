@@ -298,7 +298,7 @@ List *list_allocate_node(void *data)
 {
     List *node = LIST_MALLOC_ITEM(List);
 
-    if (!node) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+    if (!node) LIST_SET_ERRNO_END_RETURN(ENOMEM, false);
 
     node->data = data;
     node->next = NULL;
@@ -493,6 +493,10 @@ List *list_get_by_index(List **root, size_t index)
         }
 
         current_index++;
+
+        if (current_index > index) {
+            return NULL;
+        }
     }
 
     return NULL;
