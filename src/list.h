@@ -174,6 +174,14 @@ List *list_get_last(List **root);
 /// if the `max` pointer is `NULL`(the `errno` value will be set to `EINVAL`);
 bool list_get_max_int(List **root, int *max);
 
+/// @brief returns a length of the list.
+/// @param root a pointer to the beginning of the list.
+/// @return if everything was done successfully, the length is returned. `0` in case of any errors such as:
+/// the `root` pointer is `NULL` (the `errno` value is set to be `EINVAL`). Note: if the `root` points to
+/// `NULL` (aka an empty list), it is not considered as an error so the `errno` value is not going to change
+/// and `0` is going to be returned.
+size_t list_get_length(List **root);
+
 /* -- -- */
 
 /* -- IO FUNCTIONS -- */
@@ -209,7 +217,7 @@ void list_print_error();
 
 /* -- -- */
 
-//#ifdef LIST_IMPLEMENTATION
+#ifdef LIST_IMPLEMENTATION
 
 /* -- NODE ALLOCATION FUNCTIONS -- */
 
@@ -251,18 +259,14 @@ bool list_push_back(List **root, void *data)
 
     if (!new_node) LIST_SET_ERRNO_END_RETURN(ENOMEM, false);
 
-    if (!(*root)) {
+    List *last = list_get_last(root);
+
+    if (!last) {
         *root = new_node;
-        return true;
+    } else { 
+        last->next = new_node;
     }
 
-    List *last_element = *root;
-
-    while (last_element->next) {
-        last_element = last_element->next;
-    }
-
-    last_element->next = new_node;
     return true;
 }
 
@@ -475,6 +479,19 @@ bool list_get_max_int(List **root, int *max)
     return true;
 }
 
+size_t list_get_length(List **root)
+{
+    if (!root) LIST_SET_ERRNO_END_RETURN(EINVAL, 0);
+
+    size_t length = 0;
+
+    for (List *i = *root; i; i = i->next) {
+        length++;
+    }
+
+    return length;
+}
+
 /* -- -- */
 
 /* -- IO FUNCTIONS -- */
@@ -544,4 +561,4 @@ void list_print_error()
 
 /* -- -- */
 
-//#endif // LIST_IMPLEMENTATION
+#endif // LIST_IMPLEMENTATION
