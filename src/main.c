@@ -1,7 +1,7 @@
 #define LIST_IMPLEMENTATION
 #include "./list.h"
 
-#define N 2
+#define N 3
 #define MAX_INPUT_STRING_SIZE 12
 
 int main()
@@ -13,8 +13,14 @@ int main()
     int max = 0;
     if (!list_get_max_int(&numbers, &max)) goto error;
 
+    int min = 0;
+    if (!list_get_min_int(&numbers, &min)) goto error;
+
+    printf("Min number: %d\n", min);
     printf("Max number: %d\n", max);
+
     list_deallocate(&numbers, STRONG);
+    
     return 0;
 
 error:

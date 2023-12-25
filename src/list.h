@@ -167,7 +167,6 @@ bool list_convert_strings_to_int_ptrs(List **root);
 /// size of the list, then the `NULL` pointer is also returned. 
 List *list_get_by_index(List **root, size_t index);
 
-
 /// @brief returns a pointer to a node that stores the same integer as in `value`.
 /// `WARNING: if the list contains not only integers, it may cause a segfault!`
 /// @param root a pointer to the beginning of the list.
@@ -203,7 +202,6 @@ List *list_get_by_value(List **root, void *value, ListDataType data_type);
 /// `NULL` is returned and the `errno` is set to be `EINVAL`.
 List *list_get_last(List **root);
 
-// TODO: implement a function list_get_max(List **root, ListDataType data_type) to abstract the behaviour.
 /// @brief searches for the max integer in a list and sets its value to the `max` pointer.
 /// @param root a pointer to the begisnning of the list.
 /// @param max a pointer that will store the found max integer.
@@ -211,6 +209,14 @@ List *list_get_last(List **root);
 /// if the `root` pointer is `NULL` or points to `NULL` (the `errno` value will be set to `EINVAL`);
 /// if the `max` pointer is `NULL`(the `errno` value will be set to `EINVAL`);
 bool list_get_max_int(List **root, int *max);
+
+/// @brief searches for the min integer in a list and sets its value to the `min` pointer.
+/// @param root a pointer to the begisnning of the list.
+/// @param max a pointer that will store the found min integer.
+/// @return `true` if the integer was found and `false` in case of any errors such as:
+/// if the `root` pointer is `NULL` or points to `NULL` (the `errno` value will be set to `EINVAL`);
+/// if the `min` pointer is `NULL`(the `errno` value will be set to `EINVAL`);
+bool list_get_min_int(List **root, int *min);
 
 /// @brief returns a length of the list.
 /// @param root a pointer to the beginning of the list.
@@ -557,6 +563,21 @@ bool list_get_max_int(List **root, int *max)
         int temp = *(int *)i->data;
 
         if (temp > *max) *max = temp;
+    }
+
+    return true;
+}
+
+bool list_get_min_int(List **root, int *min)
+{
+    if (!root || !(*root) || !min) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    *min = *(int *)(*root)->data;
+
+    for (List *i = (*root)->next; i; i = i->next) {
+        int temp = *(int *)i->data;
+
+        if (temp < *min) *min = temp;
     }
 
     return true;
