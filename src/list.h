@@ -284,7 +284,7 @@ bool list_foreach_node(List **root, void (*function)(List *));
 
 /* -- -- */
 
-//#ifdef LIST_IMPLEMENTATION
+#ifdef LIST_IMPLEMENTATION
 
 /* -- NODE ALLOCATION FUNCTIONS -- */
 
@@ -654,11 +654,10 @@ bool list_print_node(List **node, ListDataType data_type)
         default:
             errno = ECANCELED;
             list_print_error();
-            return false;
             break;
     }
 
-    return true;
+    return (errno == 0);
 }
 
 bool list_print(List **root, ListDataType data_type)
@@ -669,6 +668,7 @@ bool list_print(List **root, ListDataType data_type)
     for (List *i = *root; i; i = i->next) {
         printf("\t");
         if (!list_print_node(&i, data_type)) {
+            printf("\n");
             return false;
         }
     }
@@ -704,4 +704,4 @@ bool list_foreach_node(List **root, void (*function)(List *))
 
 /* -- -- */
 
-//#endif // LIST_IMPLEMENTATION
+#endif // LIST_IMPLEMENTATION
