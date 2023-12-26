@@ -155,6 +155,15 @@ bool list_deallocate(List **root, DeallocationMode mode);
 /// if a string from a node is not a valid integer (`errno` value would be replaced with `EINVAL`).
 bool list_convert_strings_to_int_ptrs(List **root);
 
+/// @brief removes the first duplicating integer in the list.
+/// @param root a pointer to the beginning of the list.
+/// @param mode a specifier on how to release memory in the node.
+/// In case of a node stores a pointer to a dynamically allocated integer,
+/// then the `STRONG` mode should be used. Otherwise, if the node stores
+/// a pointer to an integer that was allocated on a stack, then the `WEAK` mode should be used.
+/// @return `true` if any duplicates were removed or `false` in case of any errors such as:
+/// if the `root` pointer is `NULL` or points to `NULL` (the `errno` value is set to be `EINVAL`);
+bool list_remove_duplicate_int(List **root, DeallocationMode mode);
 
 /// @brief removes the first duplicate of the specific `data_type` in the list.
 /// @param root a pointer to the beginning of the list.
@@ -502,16 +511,9 @@ bool list_convert_strings_to_int_ptrs(List **root)
     return result;
 }
 
-bool list_remove_duplicate(List **root, DeallocationMode mode, ListDataType data_type)
+bool list_remove_duplicate_int(List **root, DeallocationMode mode)
 {
     if (!root || !(*root)) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
-
-    // TODO: extract the logic of removing into a separate function list_remove_duplicate_int();
-    if (data_type != INT) {
-        errno = ECANCELED;
-        list_print_error();
-        return false;
-    }
 
     size_t index = 0;
 
@@ -535,6 +537,19 @@ bool list_remove_duplicate(List **root, DeallocationMode mode, ListDataType data
     }
 
     return false;
+}
+
+bool list_remove_duplicate(List **root, DeallocationMode mode, ListDataType data_type)
+{
+    switch (data_type)
+    {
+        case INT: return list_remove_duplicate_int(root, mode);
+        
+        default:
+        errno = ECANCELED;
+        list_print_error();
+        return false;
+    }
 }
 
 bool list_remove_duplicates(List **root, DeallocationMode mode, ListDataType data_type)
