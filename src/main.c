@@ -8,6 +8,8 @@ int main()
 {
     List *numbers = list_read_lines_as_string(MAX_INPUT_STRING_SIZE, N);
 
+    list_print(&numbers, STRING);
+    
     if (!list_convert_strings_to_int_ptrs(&numbers)) goto error;
 
     if (!list_remove_duplicates(&numbers, STRONG, INT)) goto error;

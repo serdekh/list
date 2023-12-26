@@ -286,6 +286,12 @@ List *list_read_line_as_string(size_t buffer_size);
 /// out in which case the `errno` will be changed, check the `list_read_line_as_string` function.
 List *list_read_lines_as_string(size_t buffer_size, size_t count);
 
+/// @brief prints the node data as a string in the following format: `{ value: <data>, next: <ptr> } <newline>`
+/// @param node a node to print
+/// @return `true` if printed successfully and `false` in case of any errors such as:
+/// if the trimming newlines failed and couldn't allocate the memory for a temporary string (the `errno` value is set to be `ENOMEM`);
+bool list_print_node_string(List **node);
+
 /// @brief prints the `node` in the following format: `{ value: <data>, next: <ptr> } <newline>`.
 /// @param node a pointer to a node to print.
 /// @param data_type a data type specifier that explicitly tells the function how to print.
@@ -744,10 +750,40 @@ List *list_read_lines_as_string(size_t buffer_size, size_t count)
     return result;
 }
 
+bool list_print_node_string(List **node)
+{
+    if (!node) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    printf("{ value: ");
+
+    char *str = (char *)(*node)->data;
+
+    if (!str) {
+        printf("(null), next: %p }\n", (*node)->next);
+        return true;
+    }
+
+    printf("`");
+
+    for (size_t i = 0; str[i] != '\0'; i++) {
+        if (str[i] == '\n') {
+            printf("[NL]");
+            continue;
+        }
+
+        printf("%c", str[i]);
+    }
+
+    printf("`, next: %p }\n", (*node)->next);
+
+    return true;
+}
+
 bool list_print_node(List **node, ListDataType data_type)
 {
     if (!node) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
 
+            char *node_string_without_newlines = NULL;
     switch (data_type) {
         case INT: 
             printf("{ value: %d, next: %p }\n", *(int *)(*node)->data, (*node)->next);
@@ -758,10 +794,7 @@ bool list_print_node(List **node, ListDataType data_type)
         case CHAR: 
             printf("{ value: %c, next: %p }\n", *(char *)(*node)->data, (*node)->next);
             break;
-        case STRING: 
-            // TODO: implement substitution for the `\n` characters so it doesn't make the printing goofy
-            printf("{ value: `%s`, next: %p }\n", (char *)(*node)->data, (*node)->next);
-            break;
+        case STRING: return list_print_node_string(node);
         default:
             errno = ECANCELED;
             list_print_error();
