@@ -155,6 +155,31 @@ bool list_deallocate(List **root, DeallocationMode mode);
 /// if a string from a node is not a valid integer (`errno` value would be replaced with `EINVAL`).
 bool list_convert_strings_to_int_ptrs(List **root);
 
+
+/// @brief removes the first duplicate of the specific `data_type` in the list.
+/// @param root a pointer to the beginning of the list.
+/// @param mode an instruction on how to release the data field's memory. Note that
+/// if the `mode` is `WEAK` and the `data_type` is a `POINTER`, it's going to cause
+/// a memory leak. (check the `DeallocationMode` enum definition for more information).
+/// @param data_type the data's type of a node. Implemented for: INT
+/// (check the `ListDataType` enum definition for more information).
+/// @return `true` if any duplicates were removed or `false` in case of any errors such as:
+/// if the `root` pointer is `NULL` or points to `NULL` (the `errno` value is set to be `EINVAL`);
+/// if the `data_type` value is not implemented for a specific type (the `errno` value is set to be ` ECANCELED`);
+bool list_remove_duplicate(List **root, DeallocationMode mode, ListDataType data_type);
+
+/// @brief removes all the duplicates from the list that contain data with the specific `data_type`
+/// and the `mode` to release unused memory. 
+/// @param root a pointer to the beginning of the list.
+/// @param mode an instruction on how to release the data field's memory. Note that
+/// if the `mode` is `WEAK` and the `data_type` is a `POINTER`, it's going to cause
+/// a memory leak. (check the `DeallocationMode` enum definition for more information).
+/// @param data_type the data's type of a node. Implemented for the same types as in 
+/// the `list_remove_duplicate` function.
+/// (check the `ListDataType` enum definition for more information).
+/// @return the same values as the `list_remove_duplicate` function. 
+bool list_remove_duplicates(List **root, DeallocationMode mode, ListDataType data_type);
+
 /* -- -- */
 
 /* -- SEARCHING FUNCTIONS --*/
@@ -192,7 +217,7 @@ List *list_get_by_string_value(List **root, char *string);
 /// @param value a value to look for in the list.
 /// @param data_type a data type specifier that explicitly tells the function what type to look for.
 /// (check the `ListDataType` enum definition for more information).
-/// @return a pointer to a node that in which the `data` field stores a pointer to a strjng with a 
+/// @return a pointer to a node that in which the `data` field stores a pointer to a string with a 
 /// specific `value`. If either the `root` is `NULL` or the list is empty or the `value` wasn't found, `NULL` is returned.
 List *list_get_by_value(List **root, void *value, ListDataType data_type);
 
@@ -475,6 +500,52 @@ bool list_convert_strings_to_int_ptrs(List **root)
     }
 
     return result;
+}
+
+bool list_remove_duplicate(List **root, DeallocationMode mode, ListDataType data_type)
+{
+    if (!root || !(*root)) LIST_SET_ERRNO_END_RETURN(EINVAL, false);
+
+    // TODO: extract the logic of removing into a separate function list_remove_duplicate_int();
+    if (data_type != INT) {
+        errno = ECANCELED;
+        list_print_error();
+        return false;
+    }
+
+    size_t index = 0;
+
+    for (List *i = *root; i; i = i->next) {
+        int i_as_int = *(int *)i->data;
+        size_t temp = index + 1;
+
+        for (List *j = i->next; j; j = j->next) {
+            int j_as_int = *(int *)j->data;
+
+            if (i_as_int != j_as_int) {
+                temp++;
+                continue;
+            }
+
+            list_pop_by_index(root, mode, temp);
+            return true;    
+        }
+
+        index++;
+    }
+
+    return false;
+}
+
+bool list_remove_duplicates(List **root, DeallocationMode mode, ListDataType data_type)
+{
+    bool removed = list_remove_duplicate(root, mode, data_type);
+
+    while (removed) {
+        removed = list_remove_duplicate(root, mode, data_type);
+    }
+    
+    return (errno == 0);
 }
 
 /* -- -- */
